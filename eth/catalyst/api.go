@@ -192,7 +192,7 @@ func (api *ConsensusAPI) assembleBlock(parentHash common.Hash, params *beacon.Pa
 		}
 		deposits = append(deposits, &tx)
 	}
-	block, err := api.eth.Miner().GetSealingBlock(parentHash, params.Timestamp, params.SuggestedFeeRecipient, params.Random, deposits)
+	block, err := api.eth.Miner().GetSealingBlock(parentHash, params.Timestamp, params.SuggestedFeeRecipient, params.Random, deposits, params.NoTxPool)
 	if err != nil {
 		return nil, err
 	}
