@@ -22,12 +22,14 @@ import (
 	"errors"
 	"io"
 	"math/big"
+    gomath "math"
 	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -320,6 +322,16 @@ func (tx *Transaction) Mint() *big.Int {
 		return dep.Mint
 	}
 	return nil
+}
+
+// L1Cost returns the L1 fee cost.
+// This depends on the chainconfig because gas costs
+// can change over time
+func (tx *Transaction) L1Cost(ctx *L1FeeContext) *big.Int {
+	rlp, _ := rlp.EncodeToBytes(tx.inner)
+	l1GasUsed := calculateL1GasUsed(rlp, ctx.Overhead)
+	l1Cost := new(big.Int).Mul(l1GasUsed, ctx.BaseFee)
+	return mulByFloat(l1Cost, ctx.Scalar)
 }
 
 // Cost returns gas * gasPrice + value.
@@ -628,6 +640,7 @@ type Message struct {
 	accessList AccessList
 	isFake     bool
 	mint       *big.Int
+	l1Cost     *big.Int
 }
 
 func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *big.Int, gasLimit uint64, gasPrice, gasFeeCap, gasTipCap *big.Int, data []byte, accessList AccessList, isFake bool) Message {
@@ -648,7 +661,7 @@ func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *b
 }
 
 // AsMessage returns the transaction as a core.Message.
-func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
+func (tx *Transaction) AsMessage(s Signer, baseFee, l1Cost *big.Int) (Message, error) {
 	msg := Message{
 		nonce:      tx.Nonce(),
 		gasLimit:   tx.Gas(),
@@ -663,6 +676,7 @@ func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int) (Message, error) {
 	}
 	if dep, ok := tx.inner.(*DepositTx); ok {
 		msg.mint = dep.Mint
+		msg.l1Cost = dep.L1Cost
 	}
 	// If baseFee provided, set gasPrice to effectiveGasPrice.
 	if baseFee != nil {
@@ -685,6 +699,7 @@ func (m Message) Data() []byte           { return m.data }
 func (m Message) AccessList() AccessList { return m.accessList }
 func (m Message) IsFake() bool           { return m.isFake }
 func (m Message) Mint() *big.Int         { return m.mint }
+func (m Message) L1Cost() *big.Int       { return m.l1Cost }
 
 // copyAddressPtr copies an address.
 func copyAddressPtr(a *common.Address) *common.Address {
@@ -693,4 +708,31 @@ func copyAddressPtr(a *common.Address) *common.Address {
 	}
 	cpy := *a
 	return &cpy
+}
+
+func calculateL1GasUsed(data []byte, overhead *big.Int) *big.Int {
+	var zeroes uint64
+	var ones uint64
+	for _, byt := range data {
+		if byt == 0 {
+			zeroes++
+		} else {
+			ones++
+		}
+	}
+
+	zeroesGas := zeroes * params.TxDataZeroGas
+	onesGas := (ones + 68) * params.TxDataNonZeroGasEIP2028
+	l1Gas := new(big.Int).SetUint64(zeroesGas + onesGas)
+	return new(big.Int).Add(l1Gas, overhead)
+}
+
+// mulByFloat multiplies a big.Int by a float and returns the
+// big.Int rounded upwards
+func mulByFloat(num *big.Int, float *big.Float) *big.Int {
+	n := new(big.Float).SetUint64(num.Uint64())
+	product := n.Mul(n, float)
+	pfloat, _ := product.Float64()
+	rounded := gomath.Ceil(pfloat)
+	return new(big.Int).SetUint64(uint64(rounded))
 }

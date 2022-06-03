@@ -37,6 +37,8 @@ type DepositTx struct {
 	To *common.Address `rlp:"nil"`
 	// Mint is minted on L2, locked on L1, nil if no minting.
 	Mint *big.Int `rlp:"nil"`
+	// L1Cost is the L1 fee cost.
+	L1Cost *big.Int `rlp:"nil"`
 	// Value is transferred from L2 balance, executed after Mint (if any)
 	Value *big.Int
 	// gas limit

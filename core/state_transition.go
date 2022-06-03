@@ -197,6 +197,10 @@ func (st *StateTransition) to() common.Address {
 func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).SetUint64(st.msg.Gas())
 	mgval = mgval.Mul(mgval, st.gasPrice)
+	mgval = mgval.Add(mgval, st.msg.L1Cost())
+	// subtract l1 cost from user, before execution
+	// add l1 cost to configurable address - chain cfg
+	// buy eth on l1 -
 	balanceCheck := mgval
 	if st.gasFeeCap != nil {
 		balanceCheck = new(big.Int).SetUint64(st.msg.Gas())
@@ -333,8 +337,9 @@ func (st *StateTransition) innerTransitionDb() (*ExecutionResult, error) {
 	}
 
 	var (
-		msg              = st.msg
-		sender           = vm.AccountRef(msg.From())
+		msg    = st.msg
+		sender = vm.AccountRef(msg.From())
+		// bedrock - chaincfg - optimism struct - pull out receipient - collects fees
 		rules            = st.evm.ChainConfig().Rules(st.evm.Context.BlockNumber, st.evm.Context.Random != nil)
 		contractCreation = msg.To() == nil
 	)
@@ -385,10 +390,16 @@ func (st *StateTransition) innerTransitionDb() (*ExecutionResult, error) {
 		// After EIP-3529: refunds are capped to gasUsed / 5
 		st.refundGas(params.RefundQuotientEIP3529)
 	}
+	// effective tip - goes to coinbase
+	// base fee - goes to chaincfg sequencer
 	effectiveTip := st.gasPrice
 	if rules.IsLondon {
 		effectiveTip = cmath.BigMin(st.gasTipCap, new(big.Int).Sub(st.gasFeeCap, st.evm.Context.BaseFee))
 	}
+	// TODO: bedrock -
+	// if rules.IsOptimism  or chaincfg.Optimsim {
+
+	//	}
 	st.state.AddBalance(st.evm.Context.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), effectiveTip))
 
 	return &ExecutionResult{
