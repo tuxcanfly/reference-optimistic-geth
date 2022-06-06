@@ -366,7 +366,7 @@ func TestZeroValueToNotExitCall(t *testing.T) {
 		t.Fatalf("failed to create call tracer: %v", err)
 	}
 	evm := vm.NewEVM(context, txContext, statedb, params.MainnetChainConfig, vm.Config{Debug: true, Tracer: tracer})
-    l1FeeContext := core.NewL1FeeContext(params.MainnetChainConfig, statedb)
+	l1FeeContext := core.NewL1FeeContext(params.MainnetChainConfig, statedb)
 	msg, err := tx.AsMessage(signer, nil, core.L1Cost(tx, l1FeeContext))
 	if err != nil {
 		t.Fatalf("failed to prepare transaction for tracing: %v", err)
