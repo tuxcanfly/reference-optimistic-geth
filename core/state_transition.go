@@ -77,6 +77,8 @@ type Message interface {
 	// Mint is nil if there is no minting
 	Mint() *big.Int
 
+	L1Cost() *big.Int
+
 	Nonce() uint64
 	IsFake() bool
 	Data() []byte

@@ -21,7 +21,6 @@ import (
 	"container/heap"
 	"errors"
 	"io"
-	gomath "math"
 	"math/big"
 	"sync/atomic"
 	"time"
@@ -29,7 +28,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -322,17 +320,6 @@ func (tx *Transaction) Mint() *big.Int {
 		return dep.Mint
 	}
 	return nil
-}
-
-// L1Cost returns the L1 fee cost.
-// This depends on the chainconfig because gas costs
-// can change over time
-func (tx *Transaction) L1Cost(ctx *L1FeeContext) *big.Int {
-	var rlp bytes.Buffer
-	tx.EncodeRLP(&rlp)
-	l1GasUsed := calculateL1GasUsed(rlp.Bytes(), ctx.Overhead)
-	l1Cost := new(big.Int).Mul(l1GasUsed, ctx.BaseFee)
-	return mulByFloat(l1Cost, ctx.Scalar)
 }
 
 // Cost returns gas * gasPrice + value.
@@ -674,10 +661,10 @@ func (tx *Transaction) AsMessage(s Signer, baseFee, l1Cost *big.Int) (Message, e
 		data:       tx.Data(),
 		accessList: tx.AccessList(),
 		isFake:     false,
+		l1Cost:     l1Cost,
 	}
 	if dep, ok := tx.inner.(*DepositTx); ok {
 		msg.mint = dep.Mint
-		msg.l1Cost = dep.L1Cost
 	}
 	// If baseFee provided, set gasPrice to effectiveGasPrice.
 	if baseFee != nil {
@@ -709,31 +696,4 @@ func copyAddressPtr(a *common.Address) *common.Address {
 	}
 	cpy := *a
 	return &cpy
-}
-
-func calculateL1GasUsed(data []byte, overhead *big.Int) *big.Int {
-	var zeroes uint64
-	var ones uint64
-	for _, byt := range data {
-		if byt == 0 {
-			zeroes++
-		} else {
-			ones++
-		}
-	}
-
-	zeroesGas := zeroes * params.TxDataZeroGas
-	onesGas := (ones + 68) * params.TxDataNonZeroGasEIP2028
-	l1Gas := new(big.Int).SetUint64(zeroesGas + onesGas)
-	return new(big.Int).Add(l1Gas, overhead)
-}
-
-// mulByFloat multiplies a big.Int by a float and returns the
-// big.Int rounded upwards
-func mulByFloat(num *big.Int, float *big.Float) *big.Int {
-	n := new(big.Float).SetUint64(num.Uint64())
-	product := n.Mul(n, float)
-	pfloat, _ := product.Float64()
-	rounded := gomath.Ceil(pfloat)
-	return new(big.Int).SetUint64(uint64(rounded))
 }

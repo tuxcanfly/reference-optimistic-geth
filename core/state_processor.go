@@ -74,9 +74,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, p.config, cfg)
 	// Iterate over and process the individual transactions
 
-	l1FeeContext := params.NewL1FeeContext(p.config, *statedb)
+	l1FeeContext := NewL1FeeContext(p.config, statedb)
 	for i, tx := range block.Transactions() {
-		msg, err := tx.AsMessage(types.MakeSigner(p.config, header.Number), header.BaseFee, tx.L1Cost(l1FeeContext))
+		msg, err := tx.AsMessage(types.MakeSigner(p.config, header.Number), header.BaseFee, L1Cost(tx, l1FeeContext))
 		if err != nil {
 			return nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
 		}
