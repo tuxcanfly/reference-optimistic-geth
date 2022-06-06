@@ -199,7 +199,9 @@ func (st *StateTransition) to() common.Address {
 func (st *StateTransition) buyGas() error {
 	mgval := new(big.Int).SetUint64(st.msg.Gas())
 	mgval = mgval.Mul(mgval, st.gasPrice)
-	mgval = mgval.Add(mgval, st.msg.L1Cost())
+	if st.msg.L1Cost() != nil {
+		mgval = mgval.Add(mgval, st.msg.L1Cost())
+	}
 	// subtract l1 cost from user, before execution
 	// add l1 cost to configurable address - chain cfg
 	// buy eth on l1 -

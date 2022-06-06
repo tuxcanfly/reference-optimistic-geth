@@ -59,8 +59,12 @@ type L1FeeContext struct {
 
 // NewL1FeeContext returns a context for calculating L1 fee cst
 func NewL1FeeContext(cfg *params.ChainConfig, statedb *state.StateDB) *L1FeeContext {
-	if !cfg.OptimismFee.Enabled {
-		return &L1FeeContext{}
+	if cfg.OptimismFee == nil || !cfg.OptimismFee.Enabled {
+		return &L1FeeContext{
+			BaseFee:  big.NewInt(0),
+			Overhead: big.NewInt(0),
+			Scalar:   big.NewFloat(0.0),
+		}
 	}
 
 	// TODO: these need to be typecasted into big.Ints
