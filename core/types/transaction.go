@@ -21,8 +21,8 @@ import (
 	"container/heap"
 	"errors"
 	"io"
+	gomath "math"
 	"math/big"
-    gomath "math"
 	"sync/atomic"
 	"time"
 
@@ -328,8 +328,9 @@ func (tx *Transaction) Mint() *big.Int {
 // This depends on the chainconfig because gas costs
 // can change over time
 func (tx *Transaction) L1Cost(ctx *L1FeeContext) *big.Int {
-	rlp, _ := rlp.EncodeToBytes(tx.inner)
-	l1GasUsed := calculateL1GasUsed(rlp, ctx.Overhead)
+	var rlp bytes.Buffer
+	tx.EncodeRLP(&rlp)
+	l1GasUsed := calculateL1GasUsed(rlp.Bytes(), ctx.Overhead)
 	l1Cost := new(big.Int).Mul(l1GasUsed, ctx.BaseFee)
 	return mulByFloat(l1Cost, ctx.Scalar)
 }
