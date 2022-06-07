@@ -649,7 +649,15 @@ func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *b
 }
 
 // AsMessage returns the transaction as a core.Message.
-func (tx *Transaction) AsMessage(s Signer, baseFee, l1Cost *big.Int) (Message, error) {
+func (tx *Transaction) AsMessage(s Signer, fees ...*big.Int) (Message, error) {
+	if len(fees) < 1 || len(fees) > 2 {
+		return Message{}, errors.New("fees should be either one or two args")
+	}
+	baseFee := fees[0]
+	l1Cost := big.NewInt(0)
+	if len(fees) > 1 {
+		l1Cost = fees[1]
+	}
 	msg := Message{
 		nonce:      tx.Nonce(),
 		gasLimit:   tx.Gas(),
