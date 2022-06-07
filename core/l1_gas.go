@@ -99,8 +99,7 @@ func ScaleDecimals(scalar, decimals *big.Int) *big.Float {
 // This depends on the chainconfig because gas costs
 // can change over time
 func L1Cost(tx *types.Transaction, ctx *L1FeeContext) *big.Int {
-	rlp := tx.Data()
-	l1GasUsed := calculateL1GasUsed(rlp, ctx.Overhead)
+	l1GasUsed := calculateL1GasUsed(tx.Data(), ctx.Overhead)
 	l1Cost := new(big.Int).Mul(l1GasUsed, ctx.BaseFee)
 	return mulByFloat(l1Cost, ctx.Scalar)
 }

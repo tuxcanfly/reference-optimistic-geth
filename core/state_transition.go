@@ -394,15 +394,13 @@ func (st *StateTransition) innerTransitionDb() (*ExecutionResult, error) {
 		// After EIP-3529: refunds are capped to gasUsed / 5
 		st.refundGas(params.RefundQuotientEIP3529)
 	}
-	// effective tip - goes to coinbase
-	// base fee - goes to chaincfg sequencer
 	effectiveTip := st.gasPrice
 	if rules.IsLondon {
 		effectiveTip = cmath.BigMin(st.gasTipCap, new(big.Int).Sub(st.gasFeeCap, st.evm.Context.BaseFee))
 	}
 	// TODO: if bedrock; don't burn base fee
 	// if rules.IsOptimism  or chaincfg.Optimsim {
-	// AddBalance(chaincfg.OptimismSequencerAddress, gasused * basefee + tip)
+	// AddBalance(chaincfg.FeeRecipient, gasused * basefee)
 	//	}
 	st.state.AddBalance(st.evm.Context.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), effectiveTip))
 
