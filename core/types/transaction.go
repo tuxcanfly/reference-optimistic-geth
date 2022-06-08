@@ -714,8 +714,8 @@ func copyAddressPtr(a *common.Address) *common.Address {
 }
 
 func L1CostOption(cost *big.Int) MsgOption {
-    return MsgOptionFunc(func(_ *Transaction, msg *Message) error {
-        msg.l1Cost = cost
-        return nil
-    })
+	return MsgOptionFunc(func(_ *Transaction, msg *Message) error {
+		msg.l1Cost = cost
+		return nil
+	})
 }
