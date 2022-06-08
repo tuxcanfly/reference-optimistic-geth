@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"container/heap"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"sync/atomic"
@@ -612,6 +613,16 @@ func (t *TransactionsByPriceAndNonce) Pop() {
 	heap.Pop(&t.heads)
 }
 
+type MsgOption interface {
+	Apply(tx *Transaction, msg *Message) error
+}
+
+type MsgOptionFunc func(tx *Transaction, msg *Message) error
+
+func (fn MsgOptionFunc) Apply(tx *Transaction, msg *Message) error {
+	return fn(tx, msg)
+}
+
 // Message is a fully derived transaction and implements core.Message
 //
 // NOTE: In a future PR this will be removed.
@@ -649,15 +660,7 @@ func NewMessage(from common.Address, to *common.Address, nonce uint64, amount *b
 }
 
 // AsMessage returns the transaction as a core.Message.
-func (tx *Transaction) AsMessage(s Signer, fees ...*big.Int) (Message, error) {
-	if len(fees) < 1 || len(fees) > 2 {
-		return Message{}, errors.New("fees should be either one or two args")
-	}
-	baseFee := fees[0]
-	l1Cost := big.NewInt(0)
-	if len(fees) > 1 {
-		l1Cost = fees[1]
-	}
+func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int, opts ...MsgOption) (Message, error) {
 	msg := Message{
 		nonce:      tx.Nonce(),
 		gasLimit:   tx.Gas(),
@@ -669,7 +672,11 @@ func (tx *Transaction) AsMessage(s Signer, fees ...*big.Int) (Message, error) {
 		data:       tx.Data(),
 		accessList: tx.AccessList(),
 		isFake:     false,
-		l1Cost:     l1Cost,
+	}
+	for i, opt := range opts {
+		if err := opt.Apply(tx, &msg); err != nil {
+			return Message{}, fmt.Errorf("failed to apply option %d: %w", i, err)
+		}
 	}
 	if dep, ok := tx.inner.(*DepositTx); ok {
 		msg.mint = dep.Mint
@@ -704,4 +711,11 @@ func copyAddressPtr(a *common.Address) *common.Address {
 	}
 	cpy := *a
 	return &cpy
+}
+
+func L1CostOption(cost *big.Int) MsgOption {
+    return MsgOptionFunc(func(_ *Transaction, msg *Message) error {
+        msg.l1Cost = cost
+        return nil
+    })
 }

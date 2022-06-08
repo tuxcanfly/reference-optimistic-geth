@@ -76,7 +76,9 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 
 	l1FeeContext := NewL1FeeContext(p.config, statedb)
 	for i, tx := range block.Transactions() {
-		msg, err := tx.AsMessage(types.MakeSigner(p.config, header.Number), header.BaseFee, L1Cost(tx, l1FeeContext))
+		l1Cost := L1Cost(tx, l1FeeContext)
+		l1CostOption := types.L1CostOption(l1Cost)
+		msg, err := tx.AsMessage(types.MakeSigner(p.config, header.Number), header.BaseFee, l1CostOption)
 		if err != nil {
 			return nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
 		}
@@ -145,7 +147,9 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 // indicating the block was invalid.
 func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, error) {
 	l1FeeContext := NewL1FeeContext(config, statedb)
-	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number), header.BaseFee, L1Cost(tx, l1FeeContext))
+	l1Cost := L1Cost(tx, l1FeeContext)
+	l1CostOption := types.L1CostOption(l1Cost)
+	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number), header.BaseFee, l1CostOption)
 	if err != nil {
 		return nil, err
 	}
