@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	gomath "math"
 	"math/big"
 
@@ -99,7 +100,9 @@ func ScaleDecimals(scalar, decimals *big.Int) *big.Float {
 // This depends on the chainconfig because gas costs
 // can change over time
 func L1Cost(tx *types.Transaction, ctx *L1FeeContext) *big.Int {
-	l1GasUsed := calculateL1GasUsed(tx.Data(), ctx.Overhead)
+	var rlp bytes.Buffer
+	tx.EncodeRLP(&rlp)
+	l1GasUsed := calculateL1GasUsed(rlp.Bytes(), ctx.Overhead)
 	l1Cost := new(big.Int).Mul(l1GasUsed, ctx.BaseFee)
 	return mulByFloat(l1Cost, ctx.Scalar)
 }
