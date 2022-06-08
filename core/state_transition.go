@@ -398,11 +398,18 @@ func (st *StateTransition) innerTransitionDb() (*ExecutionResult, error) {
 	if rules.IsLondon {
 		effectiveTip = cmath.BigMin(st.gasTipCap, new(big.Int).Sub(st.gasFeeCap, st.evm.Context.BaseFee))
 	}
-	// TODO: if bedrock; don't burn base fee
-	// if rules.IsOptimism  or chaincfg.Optimsim {
-	// AddBalance(chaincfg.FeeRecipient, gasused * basefee)
-	//	}
 	st.state.AddBalance(st.evm.Context.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), effectiveTip))
+
+	if st.evm.ChainConfig().Optimism != nil {
+		optimismConfig := st.evm.ChainConfig().Optimism
+		if optimismConfig.Enabled {
+			st.state.AddBalance(optimismConfig.FeeRecipient, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.evm.Context.BaseFee))
+			// TODO: handle L1Cost being nil
+			if st.msg.L1Cost() != nil {
+				st.state.AddBalance(optimismConfig.FeeRecipient, st.msg.L1Cost())
+			}
+		}
+	}
 
 	return &ExecutionResult{
 		UsedGas:    st.gasUsed(),

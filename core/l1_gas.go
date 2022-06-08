@@ -14,7 +14,6 @@ import (
 var big10 = big.NewInt(10)
 
 var (
-	// TODO: make configurable
 	L1BaseFeeSlot = common.BigToHash(big.NewInt(2))
 	OverheadSlot  = common.BigToHash(big.NewInt(3))
 	ScalarSlot    = common.BigToHash(big.NewInt(4))
@@ -60,7 +59,7 @@ type L1FeeContext struct {
 
 // NewL1FeeContext returns a context for calculating L1 fee cst
 func NewL1FeeContext(cfg *params.ChainConfig, statedb *state.StateDB) *L1FeeContext {
-	if cfg.OptimismFee == nil || !cfg.OptimismFee.Enabled {
+	if cfg.Optimism == nil || !cfg.Optimism.Enabled {
 		return &L1FeeContext{
 			BaseFee:  big.NewInt(0),
 			Overhead: big.NewInt(0),
@@ -68,21 +67,18 @@ func NewL1FeeContext(cfg *params.ChainConfig, statedb *state.StateDB) *L1FeeCont
 		}
 	}
 
-	// TODO: these need to be typecasted into big.Ints
-	// also L1BaseFee is packed in the slot, see
-	// https://github.com/ethereum-optimism/optimism/pull/2596
-	// unit test - statedb - interface
+	// TODO: unpack values after #2596
+	// see: https://github.com/ethereum-optimism/optimism/pull/2596
+	l1BaseFee := statedb.GetState(cfg.Optimism.L1Block, L1BaseFeeSlot).Big()
+	overhead := statedb.GetState(cfg.Optimism.GasPriceOracle, OverheadSlot).Big()
+	scalar := statedb.GetState(cfg.Optimism.GasPriceOracle, ScalarSlot).Big()
+	decimals := statedb.GetState(cfg.Optimism.GasPriceOracle, DecimalsSlot).Big()
 
-	l1BaseFee := statedb.GetState(cfg.OptimismFee.L1Block, L1BaseFeeSlot)
-	overhead := statedb.GetState(cfg.OptimismFee.GasPriceOracle, OverheadSlot)
-	scalar := statedb.GetState(cfg.OptimismFee.GasPriceOracle, ScalarSlot)
-	decimals := statedb.GetState(cfg.OptimismFee.GasPriceOracle, DecimalsSlot)
-
-	scaled := ScaleDecimals(scalar.Big(), decimals.Big())
+	scaled := ScaleDecimals(scalar, decimals)
 
 	return &L1FeeContext{
-		BaseFee:  l1BaseFee.Big(),
-		Overhead: overhead.Big(),
+		BaseFee:  l1BaseFee,
+		Overhead: overhead,
 		Scalar:   scaled,
 	}
 }
@@ -101,7 +97,9 @@ func ScaleDecimals(scalar, decimals *big.Int) *big.Float {
 // can change over time
 func L1Cost(tx *types.Transaction, ctx *L1FeeContext) *big.Int {
 	var rlp bytes.Buffer
-	tx.EncodeRLP(&rlp)
+	if err := tx.EncodeRLP(&rlp); err != nil {
+		panic(err)
+	}
 	l1GasUsed := calculateL1GasUsed(rlp.Bytes(), ctx.Overhead)
 	l1Cost := new(big.Int).Mul(l1GasUsed, ctx.BaseFee)
 	return mulByFloat(l1Cost, ctx.Scalar)
