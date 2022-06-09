@@ -404,7 +404,6 @@ func (st *StateTransition) innerTransitionDb() (*ExecutionResult, error) {
 		optimismConfig := st.evm.ChainConfig().Optimism
 		if optimismConfig.Enabled {
 			st.state.AddBalance(optimismConfig.FeeRecipient, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.evm.Context.BaseFee))
-			// TODO: handle L1Cost being nil
 			if st.msg.L1Cost() != nil {
 				st.state.AddBalance(optimismConfig.FeeRecipient, st.msg.L1Cost())
 			}

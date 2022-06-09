@@ -146,10 +146,23 @@ func applyTransaction(msg types.Message, config *params.ChainConfig, bc ChainCon
 // for the transaction, gas used and an error if the transaction failed,
 // indicating the block was invalid.
 func ApplyTransaction(config *params.ChainConfig, bc ChainContext, author *common.Address, gp *GasPool, statedb *state.StateDB, header *types.Header, tx *types.Transaction, usedGas *uint64, cfg vm.Config) (*types.Receipt, error) {
-	l1FeeContext := NewL1FeeContext(config, statedb)
-	l1Cost := L1Cost(tx, l1FeeContext)
-	l1CostOption := types.L1CostOption(l1Cost)
-	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number), header.BaseFee, l1CostOption)
+	if config.Optimism != nil && config.Optimism.Enabled {
+		l1FeeContext := NewL1FeeContext(config, statedb)
+		l1Cost := L1Cost(tx, l1FeeContext)
+		l1CostOption := types.L1CostOption(l1Cost)
+		msg, err := tx.AsMessage(types.MakeSigner(config, header.Number), header.BaseFee, l1CostOption)
+		if err != nil {
+			return nil, err
+		}
+		if msg.Nonce() != types.DepositsNonce && msg.L1Cost() == nil {
+			return nil, ErrNoL1Cost
+		}
+		// Create a new context to be used in the EVM environment
+		blockContext := NewEVMBlockContext(header, bc, author)
+		vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, config, cfg)
+		return applyTransaction(msg, config, bc, author, gp, statedb, header.Number, header.Hash(), tx, usedGas, vmenv)
+	}
+	msg, err := tx.AsMessage(types.MakeSigner(config, header.Number), header.BaseFee)
 	if err != nil {
 		return nil, err
 	}
