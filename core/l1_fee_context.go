@@ -18,7 +18,6 @@ package core
 
 import (
 	"bytes"
-	gomath "math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -55,22 +54,13 @@ func calculateL1GasUsed(data []byte, overhead *big.Int) *big.Int {
 	return new(big.Int).Add(l1Gas, overhead)
 }
 
-// mulByFloat multiplies a big.Int by a float and returns the
-// big.Int rounded upwards
-func mulByFloat(num *big.Int, float *big.Float) *big.Int {
-	n := new(big.Float).SetUint64(num.Uint64())
-	product := n.Mul(n, float)
-	pfloat, _ := product.Float64()
-	rounded := gomath.Ceil(pfloat)
-	return new(big.Int).SetUint64(uint64(rounded))
-}
-
 // L1FeeContext includes all the context necessary to calculate the cost of
 // including the transaction in L1
 type L1FeeContext struct {
 	BaseFee  *big.Int
 	Overhead *big.Int
-	Scalar   *big.Float
+	Scalar   *big.Int
+	Decimals *big.Int
 }
 
 // NewL1FeeContext returns a context for calculating L1 fee cst
@@ -79,7 +69,8 @@ func NewL1FeeContext(cfg *params.ChainConfig, statedb *state.StateDB) *L1FeeCont
 		return &L1FeeContext{
 			BaseFee:  big.NewInt(0),
 			Overhead: big.NewInt(0),
-			Scalar:   big.NewFloat(0.0),
+			Scalar:   big.NewInt(0),
+			Decimals: big.NewInt(0),
 		}
 	}
 
@@ -90,22 +81,12 @@ func NewL1FeeContext(cfg *params.ChainConfig, statedb *state.StateDB) *L1FeeCont
 	scalar := statedb.GetState(cfg.Optimism.GasPriceOracle, ScalarSlot).Big()
 	decimals := statedb.GetState(cfg.Optimism.GasPriceOracle, DecimalsSlot).Big()
 
-	scaled := ScaleDecimals(scalar, decimals)
-
 	return &L1FeeContext{
 		BaseFee:  l1BaseFee,
 		Overhead: overhead,
-		Scalar:   scaled,
+		Scalar:   scalar,
+		Decimals: decimals,
 	}
-}
-
-func ScaleDecimals(scalar, decimals *big.Int) *big.Float {
-	// 10**decimals
-	divisor := new(big.Int).Exp(big10, decimals, nil)
-	fscalar := new(big.Float).SetInt(scalar)
-	fdivisor := new(big.Float).SetInt(divisor)
-	// fscalar / fdivisor
-	return new(big.Float).Quo(fscalar, fdivisor)
 }
 
 // L1Cost returns the L1 fee cost.
@@ -116,7 +97,10 @@ func L1Cost(tx *types.Transaction, ctx *L1FeeContext) *big.Int {
 	if err := tx.EncodeRLP(&rlp); err != nil {
 		panic(err)
 	}
+	divisor := new(big.Int).Exp(big10, ctx.Decimals, nil)
 	l1GasUsed := calculateL1GasUsed(rlp.Bytes(), ctx.Overhead)
 	l1Cost := new(big.Int).Mul(l1GasUsed, ctx.BaseFee)
-	return mulByFloat(l1Cost, ctx.Scalar)
+	l1Cost = l1Cost.Mul(l1Cost, ctx.Scalar)
+	l1Cost = l1Cost.Div(l1Cost, divisor)
+	return l1Cost
 }
