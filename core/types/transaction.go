@@ -680,6 +680,9 @@ func (tx *Transaction) AsMessage(s Signer, baseFee *big.Int, opts ...MsgOption) 
 	}
 	if dep, ok := tx.inner.(*DepositTx); ok {
 		msg.mint = dep.Mint
+		if msg.l1Cost != nil {
+			return Message{}, fmt.Errorf("l1Cost must be nil for deposit tx")
+		}
 	}
 	// If baseFee provided, set gasPrice to effectiveGasPrice.
 	if baseFee != nil {
