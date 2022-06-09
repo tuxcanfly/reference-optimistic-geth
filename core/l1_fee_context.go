@@ -65,15 +65,6 @@ type L1FeeContext struct {
 
 // NewL1FeeContext returns a context for calculating L1 fee cst
 func NewL1FeeContext(cfg *params.ChainConfig, statedb *state.StateDB) *L1FeeContext {
-	if cfg.Optimism == nil || !cfg.Optimism.Enabled {
-		return &L1FeeContext{
-			BaseFee:  big.NewInt(0),
-			Overhead: big.NewInt(0),
-			Scalar:   big.NewInt(0),
-			Decimals: big.NewInt(0),
-		}
-	}
-
 	// TODO: unpack values after #2596
 	// see: https://github.com/ethereum-optimism/optimism/pull/2596
 	l1BaseFee := statedb.GetState(cfg.Optimism.L1Block, L1BaseFeeSlot).Big()

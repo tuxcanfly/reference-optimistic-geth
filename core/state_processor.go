@@ -74,11 +74,31 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, p.config, cfg)
 	// Iterate over and process the individual transactions
 
-	l1FeeContext := NewL1FeeContext(p.config, statedb)
+	if p.config.Optimism != nil && p.config.Optimism.Enabled {
+		l1FeeContext := NewL1FeeContext(p.config, statedb)
+		for i, tx := range block.Transactions() {
+			l1Cost := L1Cost(tx, l1FeeContext)
+			l1CostOption := types.L1CostOption(l1Cost)
+			msg, err := tx.AsMessage(types.MakeSigner(p.config, header.Number), header.BaseFee, l1CostOption)
+			if err != nil {
+				return nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
+			}
+			statedb.Prepare(tx.Hash(), i)
+			receipt, err := applyTransaction(msg, p.config, p.bc, nil, gp, statedb, blockNumber, blockHash, tx, usedGas, vmenv)
+			if err != nil {
+				return nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
+			}
+			receipts = append(receipts, receipt)
+			allLogs = append(allLogs, receipt.Logs...)
+		}
+		// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
+		p.engine.Finalize(p.bc, header, statedb, block.Transactions(), block.Uncles())
+
+		return receipts, allLogs, *usedGas, nil
+	}
+
 	for i, tx := range block.Transactions() {
-		l1Cost := L1Cost(tx, l1FeeContext)
-		l1CostOption := types.L1CostOption(l1Cost)
-		msg, err := tx.AsMessage(types.MakeSigner(p.config, header.Number), header.BaseFee, l1CostOption)
+		msg, err := tx.AsMessage(types.MakeSigner(p.config, header.Number), header.BaseFee)
 		if err != nil {
 			return nil, nil, 0, fmt.Errorf("could not apply tx %d [%v]: %w", i, tx.Hash().Hex(), err)
 		}

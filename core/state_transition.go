@@ -202,9 +202,6 @@ func (st *StateTransition) buyGas() error {
 	if st.msg.L1Cost() != nil {
 		mgval = mgval.Add(mgval, st.msg.L1Cost())
 	}
-	// subtract l1 cost from user, before execution
-	// add l1 cost to configurable address - chain cfg
-	// buy eth on l1 -
 	balanceCheck := mgval
 	if st.gasFeeCap != nil {
 		balanceCheck = new(big.Int).SetUint64(st.msg.Gas())
@@ -341,9 +338,8 @@ func (st *StateTransition) innerTransitionDb() (*ExecutionResult, error) {
 	}
 
 	var (
-		msg    = st.msg
-		sender = vm.AccountRef(msg.From())
-		// bedrock - chaincfg - optimism struct - pull out receipient - collects fees
+		msg              = st.msg
+		sender           = vm.AccountRef(msg.From())
 		rules            = st.evm.ChainConfig().Rules(st.evm.Context.BlockNumber, st.evm.Context.Random != nil)
 		contractCreation = msg.To() == nil
 	)
