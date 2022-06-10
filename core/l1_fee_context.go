@@ -61,6 +61,7 @@ type L1FeeContext struct {
 	Overhead *big.Int
 	Scalar   *big.Int
 	Decimals *big.Int
+	Divisor  *big.Int
 }
 
 // NewL1FeeContext returns a context for calculating L1 fee cst
@@ -71,12 +72,14 @@ func NewL1FeeContext(cfg *params.ChainConfig, statedb *state.StateDB) *L1FeeCont
 	overhead := statedb.GetState(cfg.Optimism.GasPriceOracle, OverheadSlot).Big()
 	scalar := statedb.GetState(cfg.Optimism.GasPriceOracle, ScalarSlot).Big()
 	decimals := statedb.GetState(cfg.Optimism.GasPriceOracle, DecimalsSlot).Big()
+	divisor := new(big.Int).Exp(big10, decimals, nil)
 
 	return &L1FeeContext{
 		BaseFee:  l1BaseFee,
 		Overhead: overhead,
 		Scalar:   scalar,
 		Decimals: decimals,
+		Divisor:  divisor,
 	}
 }
 
@@ -88,10 +91,9 @@ func L1Cost(tx *types.Transaction, ctx *L1FeeContext) *big.Int {
 	if err := tx.EncodeRLP(&rlp); err != nil {
 		panic(err)
 	}
-	divisor := new(big.Int).Exp(big10, ctx.Decimals, nil)
 	l1GasUsed := calculateL1GasUsed(rlp.Bytes(), ctx.Overhead)
 	l1Cost := new(big.Int).Mul(l1GasUsed, ctx.BaseFee)
 	l1Cost = l1Cost.Mul(l1Cost, ctx.Scalar)
-	l1Cost = l1Cost.Div(l1Cost, divisor)
+	l1Cost = l1Cost.Div(l1Cost, ctx.Divisor)
 	return l1Cost
 }
