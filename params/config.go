@@ -391,7 +391,7 @@ type OptimismConfig struct {
 
 // String implements the stringer interface, returning the optimism fee config details.
 func (o *OptimismConfig) String() string {
-	return "optimismfee"
+	return "optimism"
 }
 
 // String implements the fmt.Stringer interface.
