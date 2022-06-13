@@ -29,7 +29,7 @@ import (
 var big10 = big.NewInt(10)
 
 var (
-	L1BaseFeeSlot = common.BigToHash(big.NewInt(2))
+	L1BaseFeeSlot = common.BigToHash(big.NewInt(1))
 	OverheadSlot  = common.BigToHash(big.NewInt(3))
 	ScalarSlot    = common.BigToHash(big.NewInt(4))
 	DecimalsSlot  = common.BigToHash(big.NewInt(5))
