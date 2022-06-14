@@ -387,6 +387,7 @@ type OptimismConfig struct {
 	L1Block          common.Address `json:"l1_block"`
 	GasPriceOracle   common.Address `json:"gas_price_oracle"`
 	BaseFeeRecipient common.Address `json:"base_fee_recipient"`
+	L1FeeRecipient   common.Address `json:"l1_fee_recipient"`
 }
 
 // String implements the stringer interface, returning the optimism fee config details.
