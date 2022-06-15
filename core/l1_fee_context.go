@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/op-bindings/predeploys"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -68,10 +69,10 @@ type L1FeeContext struct {
 func NewL1FeeContext(cfg *params.ChainConfig, statedb *state.StateDB) *L1FeeContext {
 	// TODO: unpack values after #2596
 	// see: https://github.com/ethereum-optimism/optimism/pull/2596
-	l1BaseFee := statedb.GetState(cfg.Optimism.L1Block, L1BaseFeeSlot).Big()
-	overhead := statedb.GetState(cfg.Optimism.GasPriceOracle, OverheadSlot).Big()
-	scalar := statedb.GetState(cfg.Optimism.GasPriceOracle, ScalarSlot).Big()
-	decimals := statedb.GetState(cfg.Optimism.GasPriceOracle, DecimalsSlot).Big()
+	l1BaseFee := statedb.GetState(common.HexToAddress(predeploys.L1Block), L1BaseFeeSlot).Big()
+	overhead := statedb.GetState(common.HexToAddress(predeploys.OVM_GasPriceOracle), OverheadSlot).Big()
+	scalar := statedb.GetState(common.HexToAddress(predeploys.OVM_GasPriceOracle), ScalarSlot).Big()
+	decimals := statedb.GetState(common.HexToAddress(predeploys.OVM_GasPriceOracle), DecimalsSlot).Big()
 	divisor := new(big.Int).Exp(big10, decimals, nil)
 
 	return &L1FeeContext{

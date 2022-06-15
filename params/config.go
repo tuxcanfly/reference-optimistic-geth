@@ -384,8 +384,6 @@ func (c *CliqueConfig) String() string {
 // OptimismConfig is the optimism config.
 type OptimismConfig struct {
 	Enabled          bool           `json:"enabled"`
-	L1Block          common.Address `json:"l1_block"`
-	GasPriceOracle   common.Address `json:"gas_price_oracle"`
 	BaseFeeRecipient common.Address `json:"base_fee_recipient"`
 	L1FeeRecipient   common.Address `json:"l1_fee_recipient"`
 }
